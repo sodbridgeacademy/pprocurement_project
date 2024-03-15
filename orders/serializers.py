@@ -5,3 +5,7 @@ class OrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = '__all__'
+
+
+class OrderFileUploadSerializer(serializers.Serializer):
+    file = serializers.FileField()
