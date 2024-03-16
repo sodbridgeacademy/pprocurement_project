@@ -56,6 +56,7 @@ class UserListView(APIView):
                     'procurement_officer' if user.is_procurement_officer else 'unknown'
                 )
                 user_data.append({
+                	'id':user.id,
                     'username': user.username,
                     'email': user.email,
                     'user_type': user_type,
@@ -83,9 +84,14 @@ class UserLoginAPIView(APIView):
         if not user.check_password(password):
             return Response({'error': 'Invalid password!'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Generate and return authentication token
+        # Generate and return auth token and user type
         token, _ = Token.objects.get_or_create(user=user)
-        return Response({'token': token.key}, status=status.HTTP_200_OK)
+        return Response({
+        	'token': token.key,
+        	'is_procurement_officer':user.is_procurement_officer,
+        	'is_admin':user.is_admin
+        	}, 
+        	status=status.HTTP_200_OK)
 
 
 class UserProfileUpdateView(APIView):
