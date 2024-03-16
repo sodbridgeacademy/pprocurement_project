@@ -25,7 +25,7 @@ SECRET_KEY = "django-insecure-9cbx0nepm6scy7$0vn#*zda^p+2ytz!w$p2gb9-d0f(fjnp-eg
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['spiritual-anglerfish-sodbridge.koyeb.app', '*']
 
 
 # Application definition
