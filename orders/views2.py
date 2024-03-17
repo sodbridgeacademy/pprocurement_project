@@ -4,7 +4,7 @@ from rest_framework.parsers import MultiPartParser
 from rest_framework.views import APIView
 from .models import Order
 from accounts.models import User 
-from .serializers import OrderFileUploadSerializer
+from .serializers import OrderFileUploadSerializer, OrderSerializer
 import re
 import csv
 
@@ -181,3 +181,10 @@ class OrderssFileUploadAPIView(APIView):
         else:
             return None
 
+
+
+class OrderListAPIView(APIView):
+    def get(self, request):
+        orders = Order.objects.all()
+        serializer = OrderSerializer(orders, many=True)
+        return Response(serializer.data)
