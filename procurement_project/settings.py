@@ -23,9 +23,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = "django-insecure-9cbx0nepm6scy7$0vn#*zda^p+2ytz!w$p2gb9-d0f(fjnp-eg"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['spiritual-anglerfish-sodbridge.koyeb.app', '*']
+
+CORS_ALLOW_ALL_ORIGINS = True
 
 
 # Application definition
@@ -45,11 +47,13 @@ INSTALLED_APPS = [
     'drf_yasg',
     'jazzmin',
     'orders',
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    'corsheaders.middleware.CorsMiddleware',
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
