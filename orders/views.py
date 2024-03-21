@@ -3,12 +3,14 @@ from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser
 from rest_framework.views import APIView
 from rest_framework import generics
+from rest_framework.pagination import PageNumberPagination
 from .models import Order
 from accounts.models import User 
 from django.http import HttpResponse
 from django.utils import timezone
 from datetime import datetime
 from .serializers import OrderFileUploadSerializer, OrderSerializer, OrderEditSerializer
+
 import re
 import csv
 import io
@@ -118,10 +120,21 @@ class OrderFileUploadAPIView(APIView):
 
 
 class OrderListAPIView(APIView):
+    #pagination_class = PageNumberPagination
+
     def get(self, request):
+        # Get queryset for orders
         orders = Order.objects.all()
-        serializer = OrderSerializer(orders, many=True)
-        return Response(serializer.data)
+
+        # Paginate the queryset
+        paginator = PageNumberPagination()
+        paginated_orders = paginator.paginate_queryset(orders, request)
+
+        # Serialize paginated queryset
+        serializer = OrderSerializer(paginated_orders, many=True)
+
+        # Return paginated response
+        return paginator.get_paginated_response(serializer.data)
 
 
 
