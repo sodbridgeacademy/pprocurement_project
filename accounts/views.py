@@ -56,7 +56,7 @@ class UserListView(APIView):
                     'procurement_officer' if user.is_procurement_officer else 'unknown'
                 )
                 user_data.append({
-                	'id':user.id,
+                	'user_id':user.id,
                     'username': user.username,
                     'email': user.email,
                     'user_type': user_type,
@@ -87,6 +87,7 @@ class UserLoginAPIView(APIView):
         # Generate and return auth token and user type
         token, _ = Token.objects.get_or_create(user=user)
         return Response({
+            'user_id':user.id,
         	'token': token.key,
         	'is_procurement_officer':user.is_procurement_officer,
         	'is_admin':user.is_admin

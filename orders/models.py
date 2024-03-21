@@ -14,9 +14,10 @@ class Order(models.Model):
     quantity = models.FloatField()
     selling_price = models.FloatField(null=True, blank=True)
     cost_price = models.FloatField(null=True, blank=True)
-    quantity_bought = models.FloatField()
+    quantity_bought = models.FloatField(null=True, blank=True)
     profit = models.FloatField(null=True)
-    assigned_to = models.ForeignKey(User, on_delete=models.CASCADE)
+    assigned_to = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    procurement_officer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='orders_assigned', null=True, blank=True)
     uploaded_file = models.FileField(upload_to='orders/', blank=True)
     created_at = models.DateTimeField(default=timezone.now)
 
