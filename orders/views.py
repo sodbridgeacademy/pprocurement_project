@@ -6,10 +6,11 @@ from rest_framework import generics
 from .models import Order
 from accounts.models import User 
 from django.http import HttpResponse
+from django.utils import timezone
 from .serializers import OrderFileUploadSerializer, OrderSerializer, OrderEditSerializer
 import re
 import csv
-
+import io
 
 
 # views here
@@ -21,38 +22,117 @@ class OrderFileUploadAPIView(APIView):
         if not file:
             return Response({'error': 'No file uploaded'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # try:
-        #     with open(file_path, 'r') as file:
-        #         orders = self.parse_csv_file(file)
-        # except FileNotFoundError:
-        #     return Response({'error': 'File not found'}, status=status.HTTP_404_NOT_FOUND)
-        # except Exception as e:
-        #     return Response({'error': f'Failed to read file: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            orders = self.parse_csv_file(file)
+            print(f"orders in views {orders}")
+        except Exception as e:
+            print(e)
+            return Response({'error': f'Failed to parse CSV file: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Parse the CSV file
-        orders = self.parse_csv_file(file)
         if not orders:
-            return Response({'error': 'Failed to parse CSV file'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'No orders found in the CSV file'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Create orders for each procurement officer
         for order_data in orders:
             procurement_officer_name = order_data.get('procurement_officer')
             procurement_officer = User.objects.filter(username=procurement_officer_name).first()
             if not procurement_officer:
                 continue  # Skip if procurement officer not found
 
-            # Assign the procurement officer to the order data
-            order_data['assigned_to'] = procurement_officer.id
-
-            # Create order object directly
+            order_data['assigned_to'] = procurement_officer
             Order.objects.create(**order_data)
 
         return Response({'success': 'Orders created successfully'}, status=status.HTTP_201_CREATED)
 
     def parse_csv_file(self, file):
         orders = []
+        print("parse CSV cunc just called")
+        try:
+            # Open the file in text mode using io.TextIOWrapper
+            file_wrapper = io.TextIOWrapper(file, encoding='utf-8')
+            reader = csv.reader(file_wrapper, delimiter=',')
+            next(reader)  # Skip header row
+            for row in reader:
+                if len(row) < 4:
+                    print(f"Ignoring row: {row} - Insufficient fields")
+                    continue
+
+                procurement_officer_name = row[0]
+                product = row[1]
+                quantity = float(row[2].split()[0])
+                price = self.clean_price(row[3])
+                orders_data = {
+                    'procurement_officer': procurement_officer_name,
+                    'product': product,
+                    'quantity': quantity,
+                    'selling_price': price,
+                    'quantity_bought': None,  # Set as None initially
+                    'cost_price': None,  # Set as None initially
+                    'profit': None,  # Set as None initially
+                    'assigned_to': None,  # Assuming you have authenticated users
+                    'created_at': timezone.now()  # Use current timestamp
+                }
+                # orders.append({
+                #     'procurement_officer': procurement_officer,
+                #     'product': product,
+                #     'quantity': quantity,
+                #     'price': price
+                # })
+        except Exception as e:
+            print(f"Failed to parse CSV file: {str(e)}")
+        return orders_data
+
+    def parses_csv_file(self, file_path): # from test_script
+        orders = []
+
+        with open(file_path, 'r', newline='', encoding='utf-8') as csvfile:
+            reader = csv.reader(csvfile)  # No need to specify delimiter for CSV files
+            next(reader)  # Skip header row if present
+            for row in reader:
+                if len(row) < 4:
+                    print(f"Ignoring row: {row} - Insufficient fields")
+                    continue  # Skip this row and move to the next one
+
+                procurement_officer = row[0]
+                product = row[1]
+                quantity = float(row[2].split()[0])  # Extract numeric quantity
+                price = clean_price(row[3])  # Clean up price value
+                # Create and append order object to orders list
+                orders.append({
+                    'procurement_officer': procurement_officer,
+                    'product': product,
+                    'quantity': quantity,
+                    'price': price
+                })
+        print(f"orders here at the end: {orders[:10]}")
+        return orders
+
+
+
+    def parse1_csv_file(self, file):
+        orders = []
         try:
             reader = csv.DictReader(file)
+            for row in reader:
+                # Clean up price value
+                price = self.clean_price(row['Price'])
+                # Extract numeric quantity
+                quantity = float(row['Quantity'].split()[0])
+                orders.append({
+                    'product': row['Product'],
+                    'quantity': quantity,
+                    'selling_price': price,
+                    'procurement_officer': row['Procurement Officer'],
+                    'created_at': timezone.now() 
+                })
+        except Exception as e:
+            print(e)  # Log the error
+        return orders
+
+    def parse2_csv_file(self, file):
+        orders = []
+        try:
+            # Use text mode 'r' instead of binary mode 'rb'
+            reader = csv.DictReader(file, delimiter='\t')
             for row in reader:
                 # Clean up price value
                 price = self.clean_price(row['Price'])
@@ -68,6 +148,7 @@ class OrderFileUploadAPIView(APIView):
         except Exception as e:
             print(e)  # Log the error
         return orders
+
 
     def clean_price(self, price_str):
         # Remove non-numeric characters and symbols from the price string
