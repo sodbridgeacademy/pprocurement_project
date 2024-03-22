@@ -14,6 +14,7 @@ from .serializers import OrderFileUploadSerializer, OrderSerializer, OrderEditSe
 import re
 import csv
 import io
+import ast
 
 
 # views here
@@ -39,8 +40,15 @@ class OrderFileUploadAPIView(APIView):
         print("get orders type:", type(orders))
         
         for order_data in orders:
-            procurement_officer_name = order_data.get('procurement_officer')
-            print(f"Officer name from file: {procurement_officer_name}")
+            # Convert string to dictionary
+            #order_data_dict = ast.literal_eval(order_data)
+            if isinstance(order_data, dict):
+                print("Order is confirmed dict!")
+                procurement_officer_name = order_data.get('procurement_officer')
+                #procurement_officer_name = order_data_dict.get('procurement_officer')
+                print(f"Officer name from file: {procurement_officer_name}")
+            else:
+                print("Not a dictionary obj!!!")
 
             procurement_officer, created = User.objects.get_or_create(
                 username=procurement_officer_name,
@@ -79,7 +87,7 @@ class OrderFileUploadAPIView(APIView):
 
     def parse_csv_file(self, file):
         orders = []
-        print("parse CSV cunc just called")
+        print("parse CSV func just called!")
         try:
             # Open the file in text mode using io.TextIOWrapper
             file_wrapper = io.TextIOWrapper(file, encoding='utf-8')
