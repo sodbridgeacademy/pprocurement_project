@@ -11,20 +11,19 @@ class Order(models.Model):
     objects = OrderManager()  
     product = models.CharField(max_length=255)
     unit = models.CharField(max_length=255, blank=True)
-    quantity = models.FloatField()
+    quantity = models.CharField(null=True, blank=True, max_length=255)
     selling_price = models.FloatField(null=True, blank=True)
     cost_price = models.FloatField(null=True, blank=True)
     quantity_bought = models.FloatField(null=True, blank=True)
     profit = models.FloatField(null=True)
-    assigned_to = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
-    procurement_officer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='orders_assigned', null=True, blank=True)
+    assigned_to = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, related_name='orders_assigned',)
+    procurement_officer = models.CharField(max_length=255, blank=True, null=True)
     uploaded_file = models.FileField(upload_to='orders/', blank=True)
     created_at = models.DateTimeField(default=timezone.now)
 
-
-    # def __str__(self):
-    #     return f"{self.product} - {self.quantity}{self.get_unit_display()} (to {self.assigned_to.username})"
+    class Meta:
+        ordering = ['-created_at']
 
 
     def __str__(self):
-        return f"{self.product} - {self.quantity}kg (to {self.assigned_to.username})"
+        return f"{self.product} - {self.quantity} (to {self.assigned_to.username})"

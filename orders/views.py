@@ -4,6 +4,7 @@ from rest_framework.parsers import MultiPartParser
 from rest_framework.views import APIView
 from rest_framework import generics
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.generics import get_object_or_404
 from .models import Order
 from accounts.models import User 
 from django.http import HttpResponse
@@ -58,6 +59,8 @@ class OrderFileUploadAPIView(APIView):
                 }
             )
 
+            print(f"Officer username here: {procurement_officer_name}")
+
             # Check if the user was created or fetched from the database
             if created:
                 # Set a default password for new users
@@ -70,20 +73,20 @@ class OrderFileUploadAPIView(APIView):
             # Save the order obj
             if procurement_officer:
                 # If the procurement officer exists, assign the order to them
-                order_data['procurement_officer'] = procurement_officer_name
+                #order_data['procurement_officer'] = procurement_officer_name.u
                 order_data['assigned_to'] = procurement_officer
             else:
                 # Create a user for "unknown" officer or use an existing user for this purpose
-                unknown_officer = User.objects.get_or_create(username='unknown_officer')[0]
-                order_data['procurement_officer'] = created
+                unknown_officer = User.objects.get_or_create(username=procurement_officer_name)[0]
+                #order_data['procurement_officer'] = created
                 order_data['assigned_to'] = unknown_officer
 
-            print("Before creating orders to db")
+            print("Before creating orders in db....")
             print(f"final parsed orders {orders[:10]}")
-            del order_data['procurement_officer']
+            #del order_data['procurement_officer']
             # Now, create the order
             Order.objects.create(**order_data)
-        return Response({'success': 'Orders created successfully'}, status=status.HTTP_201_CREATED)
+        return Response({'success': 'New orders created successfully :)'}, status=status.HTTP_201_CREATED)
 
     def parse_csv_file(self, file):
         orders = []
@@ -99,14 +102,17 @@ class OrderFileUploadAPIView(APIView):
                     continue
 
                 procurement_officer_name = row[0]
+                print(f"officer name to be used from file: {procurement_officer_name}")
                 product = row[1]
-                quantity = float(row[2].split()[0])
+                quantity = row[2]
+                #quantity, quantity_measurement = self.extract_quantity(quantity_str)
                 price = self.clean_price(row[3])
                 orders_data = {
-                    'procurement_officer': procurement_officer_name,
                     'product': product,
                     'quantity': quantity,
+                    #'quantity': f"{quantity} {quantity_measurement}" if quantity_measurement else str(quantity),
                     'selling_price': price,
+                    'procurement_officer': procurement_officer_name,
                     'quantity_bought': None,  
                     'cost_price': None,  
                     'profit': None,  
@@ -114,6 +120,7 @@ class OrderFileUploadAPIView(APIView):
                     'created_at': timezone.now()
                 }
                 orders.append(orders_data)
+                print(f'orders officer: {orders[:2]}')
         except Exception as e:
             print(f"Failed to parse CSV file: {str(e)}")
         return orders
@@ -143,30 +150,6 @@ class OrderListAPIView(APIView):
 
         # Return paginated response
         return paginator.get_paginated_response(serializer.data)
-
-
-
-class OrderFilterByDateAPIView(generics.ListAPIView):
-    serializer_class = OrderSerializer
-
-    def get_queryset(self):
-        # Get the date from the query parameters
-        date_str = self.request.query_params.get('date')
-        if date_str:
-            # Convert the date string to a datetime object
-            try:
-                date = datetime.strptime(date_str, '%Y-%m-%d').date()
-            except ValueError:
-                # Handle invalid date format
-                return Order.objects.none()
-
-            # Filter orders by the specified date
-            queryset = Order.objects.filter(created_at__date=date)
-        else:
-            # If date parameter is not provided, return all orders
-            queryset = Order.objects.all()
-
-        return queryset
 
 
 
@@ -200,7 +183,99 @@ class ProcurementOfficerOrderEditAPIView(APIView):
 
 
 
+class OrderFilterByDateAPIView(generics.ListAPIView):
+    serializer_class = OrderSerializer
+
+    def get_filtered_queryset(self, date_str):
+        if date_str:
+            try:
+                date = datetime.strptime(date_str, '%Y-%m-%d').date()
+            except ValueError:
+                return Order.objects.none()
+
+            queryset = Order.objects.filter(created_at__date=date).order_by('id')
+        else:
+            queryset = Order.objects.all().order_by('id')
+
+        return queryset
+
+    def get_queryset(self):
+        date_str = self.request.query_params.get('date')
+        queryset = self.get_filtered_queryset(date_str)
+        return queryset
+
+    # def get_queryset(self):
+    #     # Get the date from the query parameters
+    #     date_str = self.request.query_params.get('date')
+    #     if date_str:
+    #         # Convert the date string to a datetime object
+    #         try:
+    #             date = datetime.strptime(date_str, '%Y-%m-%d').date()
+    #             print(f"stripped date here: {date}")
+    #         except ValueError:
+    #             # Handle invalid date format
+    #             return Order.objects.none()
+
+    #         # Filter orders by the specified date
+    #         queryset = Order.objects.filter(created_at__date=date).order_by('id')
+    #     else:
+    #         # If date parameter is not provided, return all orders
+    #         queryset = Order.objects.all().order_by('id')
+
+    #     # Store the filtered queryset in a variable
+    #     self.filtered_queryset = queryset
+    #     print(f"queryset test: {queryset[:5]}")
+
+    #     return queryset
+
+
+
 class OrderDownloadCSVExport(APIView):
+    def get(self, request):
+        # Get the queryset based on the filter parameters
+        # filter_view = OrderFilterByDateAPIView()
+        # queryset = filter_view.get_queryset()
+
+        # # Access the filtered queryset from the filter-by-date view
+        # queryset = getattr(self, 'filtered_queryset', None)
+
+        # # If queryset is not set, return an error response
+        # if queryset is None:
+        #     return Response({'error': 'Filtered queryset not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        date_str = request.query_params.get('date')
+        queryset = OrderFilterByDateAPIView.get_filtered_queryset(self, date_str)
+
+        # Create CSV response
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="updated_orders_by_procurement.csv"'
+
+        writer = csv.writer(response)
+        writer.writerow(['Product', 'Unit', 'Quantity', 'Selling Price', 'Cost Price', 'Quantity Bought', 'Assigned To', 'Created At', 'Profit'])
+
+        for order in queryset:
+            profit = order.cost_price - order.selling_price if order.cost_price is not None else None
+            assigned_to_username = order.assigned_to.username if order.assigned_to else None
+            created_at_formatted = order.created_at.strftime('%Y-%m-%d %H:%M:%S') if order.created_at else None
+
+            writer.writerow([
+                order.product,
+                order.unit,
+                order.quantity,
+                order.selling_price,
+                order.cost_price,
+                order.quantity_bought,
+                assigned_to_username,
+                created_at_formatted,
+                profit
+            ])
+
+        return response
+
+
+
+# downloads all the orders without filter
+class OrderDownloadCSVExport1(APIView):
     def get(self, request):
         orders = Order.objects.all()
 
@@ -208,7 +283,7 @@ class OrderDownloadCSVExport(APIView):
         response['Content-Disposition'] = 'attachment; filename="updated_orders_by_procurement.csv"'
 
         writer = csv.writer(response)
-        writer.writerow(['Product', 'Unit', 'Quantity', 'Selling Price', 'Cost Price', 'Quantity Bought', 'Assigned To', 'Created At', 'Profit'])
+        writer.writerow(['Product', 'Quantity', 'Selling Price', 'Cost Price', 'Quantity Bought', 'Assigned To', 'Created At', 'Profit'])
 
         for order in orders:
             profit = order.cost_price - order.selling_price if order.cost_price is not None else None
@@ -217,7 +292,6 @@ class OrderDownloadCSVExport(APIView):
 
             writer.writerow([
                 order.product,
-                order.unit,
                 order.quantity,
                 order.selling_price,
                 order.cost_price,
