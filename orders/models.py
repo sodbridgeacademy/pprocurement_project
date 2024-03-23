@@ -14,7 +14,7 @@ class Order(models.Model):
     quantity = models.CharField(null=True, blank=True, max_length=255)
     selling_price = models.FloatField(null=True, blank=True)
     cost_price = models.FloatField(null=True, blank=True)
-    quantity_bought = models.FloatField(null=True, blank=True)
+    quantity_bought = models.CharField(max_length=255, null=True, blank=True)
     profit = models.FloatField(null=True)
     assigned_to = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, related_name='orders_assigned',)
     procurement_officer = models.CharField(max_length=255, blank=True, null=True)
