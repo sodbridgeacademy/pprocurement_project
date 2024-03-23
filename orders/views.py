@@ -286,7 +286,7 @@ class OrderDownloadCSVExport1(APIView):
         writer.writerow(['Product', 'Quantity', 'Selling Price', 'Cost Price', 'Quantity Bought', 'Assigned To', 'Created At', 'Profit'])
 
         for order in orders:
-            profit = order.cost_price - order.selling_price if order.cost_price is not None else None
+            profit = order.selling_price - order.cost_price if order.cost_price is not None else None
             assigned_to_username = order.assigned_to.username if order.assigned_to else None
             created_at_formatted = order.created_at.strftime('%Y-%m-%d %H:%M:%S') if order.created_at else None
 
