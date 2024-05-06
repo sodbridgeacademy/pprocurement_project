@@ -113,7 +113,7 @@ class UserPasswordUpdateView(APIView):
     """
     API endpoint for authenticated users to update their password.
     """
-    #permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
         user = request.user
